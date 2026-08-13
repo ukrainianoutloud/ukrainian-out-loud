@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" font-family="Spectral, Georgia, serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1B2740"/>
+      <stop offset="0.55" stop-color="#141B26"/>
+      <stop offset="1" stop-color="#0E131B"/>
+    </linearGradient>
+    <linearGradient id="horizon" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E5C370" stop-opacity="0"/>
+      <stop offset="1" stop-color="#E5C370" stop-opacity="0.10"/>
+    </linearGradient>
+  </defs>
+
+  <!-- brand field -->
+  <rect width="1200" height="630" fill="#131922"/>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- faint wheat-field horizon band -->
+  <rect x="0" y="430" width="1200" height="200" fill="url(#horizon)"/>
+  <!-- thin gold rule near base -->
+  <rect x="64" y="566" width="1072" height="3" fill="#E5C370" opacity="0.85"/>
+
+  <!-- wordmark: mark + name (top-left) -->
+  <g transform="translate(64,72)">
+    <path d="M22 0C10 0 0 8.2 0 19c0 6.4 3.6 12 9.4 15.4L7 46l12.5-7.5c.8.1 1.7.2 2.5.2 12 0 22-8.2 22-19S34 0 22 0Z"
+          transform="scale(0.62)" fill="#E5C370"/>
+    <circle cx="13.6" cy="11.8" r="3.4" fill="#131922"/>
+    <text x="42" y="24" font-size="30" font-weight="600" fill="#EBEFF4" letter-spacing="-0.5">Ukrainian Out Loud</text>
+  </g>
+
+  <!-- tagline (the hero of the default card) -->
+  <text x="64" y="300" font-size="96" font-weight="600" fill="#EBEFF4" letter-spacing="-1.5">Real Ukrainian,</text>
+  <text x="64" y="404" font-size="96" font-weight="600" fill="#EBEFF4" letter-spacing="-1.5">made easy to say.</text>
+
+  <!-- phonetic signature accent (Inter would be used in production; serif fallback here) -->
+  <text x="66" y="470" font-family="Inter, system-ui, sans-serif" font-size="34" font-weight="500" fill="#AFB5BD" letter-spacing="0.5"><tspan fill="#E5C370" font-weight="700">DYAH</tspan>·koo·yoo — “thank you”</text>
+
+  <!-- footer url -->
+  <text x="64" y="606" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="500" fill="#8C939C">ukrainianoutloud.com</text>
+</svg>
