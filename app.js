@@ -97,24 +97,162 @@
   });
 
   /* -------------------------------------------------------------------------
-     4) SEARCH HOOK  — PHASE 8 STUB. DO NOT BUILD THE INDEX HERE.
-     Phase 8 will: (a) fetch /search-index.json, (b) init Fuse.js over it,
-     (c) render .result-row items into #results, (d) toggle #no-results,
-     (e) read the ?q= param below to prefill + run an initial query.
-     This block only wires the DOM shell so Phase 8 has clean anchors.
+     4) SEARCH  (Phase 8 — live Fuse.js over /search-index.json)
+     Only runs on /search/ (guarded by #search-input). Lazy-loads the index on
+     first interaction, builds Fuse once, debounces input, renders word-card
+     results, toggles #no-results, honours category chips, and prefills+runs the
+     ?q= param. The Cyrillic keyboard (§5) already dispatches "input", so on-
+     screen typing flows through the same handler — no extra wiring needed.
+
+     Record shape (lean, from 140_SearchIndex.gs):
+       { s:slug, u:ukrainian, t:translit(col D), m:meaning,
+         p:phonetic(raw), c:category, k:[tags] }
+     Result markup mirrors _word-card.html (same classes) so it inherits the
+     design system. NOTE: word cards render a styled PRONUNCIATION_BLOCK + a
+     separate PHONETIC_PLAIN; here we approximate with the raw phonetic string
+     `p` for both (stress is already conveyed by UPPERCASE). If you want the
+     word page's exact per-syllable markup, share renderPronunciation_'s output
+     and swap renderPron() below — that's the only change needed.
      ------------------------------------------------------------------------- */
   var searchInput = document.getElementById("search-input");
   if (searchInput) {
-    // Client-read ?q= (decision #6: no server token). Prefill only; no query yet.
-    var q = new URLSearchParams(window.location.search).get("q");
-    if (q) searchInput.value = q;
-
-    // Phase 8 entry point — intentionally inert until the index ships.
     window.UOL_SEARCH_READY = false;
-    searchInput.addEventListener("input", function () {
-      if (!window.UOL_SEARCH_READY) return; // no-op until Phase 8 flips this
-      /* Phase 8: run Fuse query on searchInput.value, populate #results. */
-    });
+
+    var results   = document.getElementById("results");
+    var noResults = document.getElementById("no-results");
+    var chipsWrap = document.querySelector(".filter-chips");
+
+    var WORDS_PREFIX = "/words/";   // slug is identity; URLs are /words/{slug}/
+    var RESULT_LIMIT = 30;
+
+    var FUSE_OPTS = {
+      includeScore: true,
+      ignoreLocation: true,
+      threshold: 0.3,
+      minMatchCharLength: 2,
+      keys: [
+        { name: "u", weight: 3 },    // ukrainian (Cyrillic)  — дякую
+        { name: "t", weight: 2.5 },  // transliteration col D  — diakuiu
+        { name: "m", weight: 2 },    // meaning
+        { name: "p", weight: 1.5 },  // phonetic (raw)
+        { name: "k", weight: 1 },    // tags
+        { name: "s", weight: 1 }     // slug (catches slug-style spellings)
+      ]
+    };
+
+    var fuse = null, records = [], loadPromise = null, activeCategory = null;
+
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    // Approximate the word-card pron block from raw phonetic `p`.
+    function renderPron(p) {
+      if (!p) return "";
+      return '<span class="pron" aria-label="Pronounced ' + esc(p) + '">' +
+             esc(p) + "</span>";
+    }
+
+    function cardHtml(r) {
+      return '<a class="word-card" href="' + WORDS_PREFIX + esc(r.s) + '/">' +
+               '<span class="word-card__cyr" lang="uk">' + esc(r.u) + "</span>" +
+               '<span class="word-card__translit">' + esc(r.t) + "</span>" +
+               renderPron(r.p) +
+               '<span class="word-card__meaning">' + esc(r.m) + "</span>" +
+             "</a>";
+    }
+
+    function applyCategory(list) {
+      if (!activeCategory) return list;
+      return list.filter(function (r) { return r.c === activeCategory; });
+    }
+
+    function render(list) {
+      if (!results) return;
+      if (!list.length) {
+        results.hidden = true; results.innerHTML = "";
+        if (noResults) noResults.hidden = false;
+        return;
+      }
+      if (noResults) noResults.hidden = true;
+      results.innerHTML = list.slice(0, RESULT_LIMIT).map(cardHtml).join("");
+      results.hidden = false;
+    }
+
+    // Empty query: show nothing (or category-filtered full list if a chip is on).
+    function runQuery() {
+      var q = searchInput.value.trim();
+      if (!fuse) return;
+      if (!q) {
+        if (activeCategory) { render(applyCategory(records)); }
+        else { if (results) { results.hidden = true; results.innerHTML = ""; }
+               if (noResults) noResults.hidden = true; }
+        return;
+      }
+      var hits = fuse.search(q).map(function (h) { return h.item; });
+      render(applyCategory(hits));
+    }
+
+    var debounceT = null;
+    function onInput() {
+      if (!window.UOL_SEARCH_READY) { ensureLoaded(); return; }
+      clearTimeout(debounceT);
+      debounceT = setTimeout(runQuery, 150);
+    }
+
+    function ensureLoaded() {
+      if (loadPromise) return loadPromise;
+      loadPromise = fetch("/search-index.json", { cache: "force-cache" })
+        .then(function (res) {
+          if (!res.ok) throw new Error("index " + res.status);
+          return res.json();
+        })
+        .then(function (data) {
+          records = Array.isArray(data) ? data : [];
+          if (typeof Fuse === "undefined") throw new Error("Fuse not loaded");
+          fuse = new Fuse(records, FUSE_OPTS);
+          window.UOL_SEARCH_READY = true;
+          runQuery(); // run whatever's already in the box (incl. prefilled ?q=)
+        })
+        .catch(function (err) {
+          if (window.console) console.error("[UOL search]", err);
+          loadPromise = null; // allow a retry on next keystroke
+        });
+      return loadPromise;
+    }
+
+    // Category chips (single-select toggle). Defensive: reads data-category,
+    // falls back to trimmed text. If _category-chip.html uses a different
+    // attribute, change the getCat() line only.
+    function getCat(btn) {
+      return btn.getAttribute("data-category") ||
+             (btn.textContent || "").trim();
+    }
+    if (chipsWrap) {
+      chipsWrap.addEventListener("click", function (ev) {
+        var chip = ev.target.closest("button, [role='button'], .chip, a");
+        if (!chip || !chipsWrap.contains(chip)) return;
+        ev.preventDefault();
+        var cat = getCat(chip);
+        var wasActive = chip.getAttribute("aria-pressed") === "true";
+        Array.prototype.forEach.call(
+          chipsWrap.querySelectorAll("[aria-pressed]"),
+          function (c) { c.setAttribute("aria-pressed", "false"); }
+        );
+        if (wasActive) { activeCategory = null; chip.setAttribute("aria-pressed", "false"); }
+        else { activeCategory = cat; chip.setAttribute("aria-pressed", "true"); }
+        if (window.UOL_SEARCH_READY) runQuery();
+        else ensureLoaded();
+      });
+    }
+
+    searchInput.addEventListener("input", onInput);
+
+    // Prefill ?q= (shareable, no-JS-friendly) and load immediately if present.
+    var q = new URLSearchParams(window.location.search).get("q");
+    if (q) { searchInput.value = q; ensureLoaded(); }
   }
 
   /* -------------------------------------------------------------------------
