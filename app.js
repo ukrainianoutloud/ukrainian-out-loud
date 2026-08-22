@@ -204,7 +204,7 @@
 
     function ensureLoaded() {
       if (loadPromise) return loadPromise;
-      loadPromise = fetch("/search-index.json", { cache: "no-cache" })
+      loadPromise = fetch("/search-index.json", { cache: "force-cache" })
         .then(function (res) {
           if (!res.ok) throw new Error("index " + res.status);
           return res.json();

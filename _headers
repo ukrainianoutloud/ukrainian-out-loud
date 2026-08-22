@@ -1,0 +1,28 @@
+# _headers — Cloudflare Pages (repo root). Registered in PASSTHROUGH_FILES.
+# Cache-Control is set ONLY on immutable asset paths; HTML + search-index.json
+# keep the Pages default (public, max-age=0, must-revalidate + ETag) for freshness.
+# CSP ships as Report-Only until verified in DevTools; then rename the header to
+# Content-Security-Policy to enforce.
+#
+# CSP hashes are pinned to base.html's inline bits:
+#   sha256-hZwiZ+UKhRaIQxgOnogXU6mhJtOkOMmubJgJ29oP60A=  -> head no-js/js swap
+#   sha256-9f8ZK5epjuMsYtXFjPqrgJI0L4QOAUYmJdHtT+RSH/c=  -> img onerror="this.remove()"
+# If either inline snippet changes, recompute its hash or the script is blocked.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Content-Security-Policy-Report-Only: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; script-src 'self' https://static.cloudflareinsights.com 'unsafe-hashes' 'sha256-hZwiZ+UKhRaIQxgOnogXU6mhJtOkOMmubJgJ29oP60A=' 'sha256-9f8ZK5epjuMsYtXFjPqrgJI0L4QOAUYmJdHtT+RSH/c='; style-src 'self'; img-src 'self' data: https://i.ytimg.com; font-src 'self'; media-src 'self'; connect-src 'self'; frame-src https://www.youtube-nocookie.com; form-action 'self'
+
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/og/*
+  Cache-Control: public, max-age=86400
+
+/search-index.json
+  X-Robots-Tag: noindex

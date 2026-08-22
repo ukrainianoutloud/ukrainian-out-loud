@@ -1,0 +1,4 @@
+# _redirects — Cloudflare Pages (repo root). Registered in PASSTHROUGH_FILES.
+# PATH-level redirects only. www -> apex is a Cloudflare Redirect Rule, not here.
+# Optional belt-and-suspenders: the pre-standardization slug (never shared publicly).
+/words/dyakuyu/* /words/diakuiu/ 301
